@@ -48,7 +48,7 @@ class LineDivider extends StatelessWidget {
           : constraints.constrainHeight();
 
       assert(constrainSize != double.infinity && constrainSize != double.nan,
-          "unknown size");
+      "unknown size");
 
       const dashSize = 4.0;
 
@@ -63,13 +63,13 @@ class LineDivider extends StatelessWidget {
 
       final space = this.space ?? 0;
       final double paddingStart =
-          direction == Axis.horizontal ? startIndent : space / 2;
+      direction == Axis.horizontal ? startIndent : space / 2;
       final double paddingTop =
-          direction == Axis.horizontal ? space / 2 : startIndent;
+      direction == Axis.horizontal ? space / 2 : startIndent;
       final double paddingEnd =
-          direction == Axis.horizontal ? endIndent : space / 2;
+      direction == Axis.horizontal ? endIndent : space / 2;
       final double paddingBottom =
-          direction == Axis.horizontal ? space / 2 : endIndent;
+      direction == Axis.horizontal ? space / 2 : endIndent;
 
       return Container(
         padding: EdgeInsetsDirectional.only(
@@ -82,13 +82,14 @@ class LineDivider extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(
             dashCount,
-            (index) => SizedBox(
-              width: dashWidth,
-              height: dashHeight,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: color),
-              ),
-            ),
+                (index) =>
+                SizedBox(
+                  width: dashWidth,
+                  height: dashHeight,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: color),
+                  ),
+                ),
           ),
         ),
       );
@@ -162,6 +163,12 @@ class SpaceDivider extends StatelessWidget {
   const SpaceDivider(this.space, {Key? key, Axis? direction})
       : direction = direction ?? Axis.horizontal,
         super(key: key);
+
+  const SpaceDivider.horizontal(double space, {Key? key})
+      :this(space, direction: Axis.horizontal, key: key);
+
+  const SpaceDivider.vertical(double space, {Key? key})
+      :this(space, direction: Axis.vertical, key: key);
 
   @override
   Widget build(BuildContext context) {
