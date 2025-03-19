@@ -1,50 +1,27 @@
 import 'package:flutter/material.dart';
 
 typedef ErrorWidgetBuilder = Function(
-    BuildContext context, VoidCallback refresh);
+    BuildContext context, String message, VoidCallback refresh);
 
 @immutable
 class LoadingViewer extends StatefulWidget {
   final LoadingViewerController? controller;
-  final bool isLoading;
   final WidgetBuilder contentBuilder;
   final WidgetBuilder? loadingBuilder;
   final ErrorWidgetBuilder? errorBuilder;
   final ErrorWidgetBuilder? networkErrorBuilder;
   final WidgetBuilder? emptyBuilder;
+  final bool keepAlive;
 
-  const LoadingViewer({
-    required this.isLoading,
-    required this.contentBuilder,
-    this.loadingBuilder,
-    this.errorBuilder,
-    this.networkErrorBuilder,
-    this.emptyBuilder,
-    this.controller,
-    Key? key,
-  }) : super(key: key);
-
-  const LoadingViewer.loading({
-    this.isLoading = true,
-    required this.contentBuilder,
-    this.loadingBuilder,
-    this.errorBuilder,
-    this.networkErrorBuilder,
-    this.emptyBuilder,
-    this.controller,
-    Key? key,
-  }) : super(key: key);
-
-  const LoadingViewer.content({
-    this.isLoading = false,
-    required this.contentBuilder,
-    this.loadingBuilder,
-    this.errorBuilder,
-    this.networkErrorBuilder,
-    this.emptyBuilder,
-    this.controller,
-    Key? key,
-  }) : super(key: key);
+  const LoadingViewer(
+      {super.key,
+      required this.contentBuilder,
+      this.loadingBuilder,
+      this.errorBuilder,
+      this.networkErrorBuilder,
+      this.emptyBuilder,
+      this.controller,
+      this.keepAlive = false});
 
   @override
   State<StatefulWidget> createState() {
@@ -52,7 +29,8 @@ class LoadingViewer extends StatefulWidget {
   }
 }
 
-class _LoadingViewerState extends State<LoadingViewer> {
+class _LoadingViewerState extends State<LoadingViewer>
+    with AutomaticKeepAliveClientMixin {
   late LoadingViewerController _controller;
   bool _contentBuilt = false;
 
@@ -60,12 +38,13 @@ class _LoadingViewerState extends State<LoadingViewer> {
   void initState() {
     super.initState();
     _controller = widget.controller ?? LoadingViewerController();
-    if (widget.isLoading) _controller.showLoadingView();
+    _controller.showLoadingView();
     _controller._setState = () => setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final type = _controller._type;
 
     Widget? view;
@@ -74,17 +53,24 @@ class _LoadingViewerState extends State<LoadingViewer> {
         view = widget.contentBuilder.call(context);
         break;
       case _LoadingViewerType.loading:
-        view = widget.loadingBuilder?.call(context) ?? Container();
+        view = widget.loadingBuilder?.call(context) ??
+            _textWidget(LoadingViewerController._default_text_laoding);
         break;
       case _LoadingViewerType.error:
-        view = widget.errorBuilder?.call(context, _onRefresh) ?? Container();
+        view = widget.errorBuilder
+                ?.call(context, _controller._errorMsg, _controller.refresh) ??
+            _textWidget(_controller._errorMsg);
         break;
       case _LoadingViewerType.networkError:
-        view = widget.networkErrorBuilder?.call(context, _onRefresh) ??
-            Container();
+        const msg = LoadingViewerController._default_text_netwrok_error;
+        view = widget.networkErrorBuilder
+                ?.call(context, msg, _controller.refresh) ??
+            widget.errorBuilder?.call(context, msg, _controller.refresh) ??
+            _textWidget(msg);
         break;
       case _LoadingViewerType.empty:
-        view = widget.emptyBuilder?.call(context) ?? Container();
+        view = widget.emptyBuilder?.call(context) ??
+            _textWidget(LoadingViewerController._default_text_empty);
         break;
     }
 
@@ -101,17 +87,31 @@ class _LoadingViewerState extends State<LoadingViewer> {
       _contentBuilt = false;
     }
 
-    if (type == _LoadingViewerType.content) _contentBuilt = true;
+    if (type == _LoadingViewerType.content) {
+      _contentBuilt = true;
+    } else if (type == _LoadingViewerType.error ||
+        type == _LoadingViewerType.networkError) {
+      view = GestureDetector(onTap: _controller.refresh, child: view);
+    }
 
     return view!;
   }
 
-  VoidCallback get _onRefresh => _controller._refresh ?? () {};
+  @override
+  bool get wantKeepAlive => widget.keepAlive;
+
+  Widget _textWidget(String text) {
+    return Center(child: Text(text));
+  }
 }
 
 class LoadingViewerController {
+  static const String _default_text_laoding = "Loading...";
+  static const String _default_text_error = "Error";
+  static const String _default_text_netwrok_error = "Network error";
+  static const String _default_text_empty = "No data";
   _LoadingViewerType _type = _LoadingViewerType.content;
-  String? _errorMsg;
+  String _errorMsg = _default_text_error;
   VoidCallback? _refresh;
   VoidCallback? _setState;
 
@@ -127,7 +127,7 @@ class LoadingViewerController {
     _notifyUpdate();
   }
 
-  void showErrorView([String? errorMsg]) {
+  void showErrorView(String errorMsg) {
     if (_type == _LoadingViewerType.error && _errorMsg == errorMsg) return;
     _errorMsg = errorMsg;
     _type = _LoadingViewerType.error;
@@ -149,6 +149,11 @@ class LoadingViewerController {
   void _notifyUpdate() => _setState?.call();
 
   void setRefreshListener(VoidCallback refresh) => _refresh = refresh;
+
+  void refresh() {
+    showLoadingView();
+    _refresh?.call();
+  }
 }
 
 enum _LoadingViewerType {
